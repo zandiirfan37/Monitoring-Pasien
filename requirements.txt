@@ -1,0 +1,10 @@
+Flask
+requests
+opencv-python
+sounddevice
+numpy
+torch
+scipy
+librosa
+matplotlib
+Flask-Cors
