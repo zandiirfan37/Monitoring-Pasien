@@ -73,6 +73,30 @@ def serve_file(filename):
     else:
         return "File not found", 404
     return send_from_directory(directory, filename)
+@app.route('/data/<int:id>', methods=['DELETE'])
+def delete_data(id):
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT image_path, audio_path FROM patient_data WHERE id = ?", (id,))
+    row = c.fetchone()
+
+    if row:
+        image_path = row['image_path']
+        audio_path = row['audio_path']
+
+        # Delete files from filesystem
+        if image_path and os.path.exists(image_path):
+            os.remove(image_path)
+        if audio_path and os.path.exists(audio_path):
+            os.remove(audio_path)
+
+        # Delete from database
+        c.execute("DELETE FROM patient_data WHERE id = ?", (id,))
+        conn.commit()
+
+    conn.close()
+    return jsonify({'message': 'Data deleted successfully'}), 200
 
 if __name__ == '__main__':
     init_db()
