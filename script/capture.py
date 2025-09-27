@@ -4,11 +4,11 @@ import numpy as np
 import requests
 import time
 import os
-import torch
 from scipy.io.wavfile import write
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
+from ultralytics import YOLO
 
 # --- Constants ---
 IMAGE_DIR = "images"
@@ -16,30 +16,14 @@ AUDIO_DIR = "audios"
 SPECTROGRAM_DIR = "spectrograms"
 
 # --- Model Loading ---
-# Load your pre-trained PyTorch model
-# Make sure to place your model in the 'model' directory
+# Load your pre-trained YOLO model
 model_path = os.path.join(os.path.dirname(__file__), '..', 'model', 'best (3).pt')
 if not os.path.exists(model_path):
     print(f"Model not found at {model_path}")
     exit()
 
 # Load the model
-# model = torch.load(model_path)
-# model.eval() # Set the model to evaluation mode
-
-# --- Preprocessing (NEEDS TO BE IMPLEMENTED) ---
-def preprocess_image(image):
-    # This is a placeholder. You need to implement the actual preprocessing required by your model.
-    # For example, resizing, normalization, etc.
-    return image
-
-def preprocess_audio(audio_path):
-    # This is a placeholder. You need to implement the actual preprocessing required by your model.
-    # This function now receives the audio file path
-    y, sr = librosa.load(audio_path)
-    spect = librosa.feature.melspectrogram(y=y, sr=sr)
-    spect_db = librosa.power_to_db(spect, ref=np.max)
-    return spect_db
+model = YOLO(model_path)
 
 # --- Main Capture Loop ---
 def capture_and_analyze():
@@ -80,30 +64,28 @@ def capture_and_analyze():
             # --- Convert to Spectrogram ---
             spectrogram_filename = f"{timestamp}.png"
             spectrogram_path = os.path.join(SPECTROGRAM_DIR, spectrogram_filename)
-            spect = preprocess_audio(audio_path)
+            y, sr = librosa.load(audio_path)
+            spect = librosa.feature.melspectrogram(y=y, sr=sr)
+            spect_db = librosa.power_to_db(spect, ref=np.max)
             
             fig, ax = plt.subplots()
-            librosa.display.specshow(spect, sr=fs, x_axis='time', y_axis='mel', ax=ax)
+            librosa.display.specshow(spect_db, sr=sr, x_axis='time', y_axis='mel', ax=ax)
             plt.savefig(spectrogram_path)
             plt.close(fig)
             print(f"Spectrogram saved: {spectrogram_path}")
 
 
-            # --- Analyze with Model (Placeholder) ---
-            # Preprocess the data
-            # processed_image = preprocess_image(frame)
-            # processed_spectrogram = preprocess_image(spect) # Assuming same preprocessing as image
+            # --- Analyze with Model ---
+            results_image = model.predict(image_path)
+            results_audio = model.predict(spectrogram_path)
 
-            # Run inference
-            # with torch.no_grad():
-            #     # The following is a placeholder. You need to adapt this to your model's input format
-            #     # image_prediction = model(processed_image)
-            #     # audio_prediction = model(processed_spectrogram)
-            #     image_prediction = "Placeholder Image Prediction"
-            #     audio_prediction = "Placeholder Audio Prediction"
+            # Get the class with the highest probability for the image
+            probs_image = results_image[0].probs
+            image_prediction = results_image[0].names[probs_image.top1]
 
-            image_prediction = "Normal"
-            audio_prediction = "Normal"
+            # Get the class with the highest probability for the audio
+            probs_audio = results_audio[0].probs
+            audio_prediction = results_audio[0].names[probs_audio.top1]
 
 
             # --- Send to Backend ---

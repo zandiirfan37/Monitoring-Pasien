@@ -8,3 +8,5 @@ scipy
 librosa
 matplotlib
 Flask-Cors
+torchvision
+ultralytics
