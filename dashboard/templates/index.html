@@ -4,22 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Monitoring Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Montserrat', sans-serif;
             background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background-color: #fff;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            margin: 0;
+            font-size: 24px;
         }
 
         .grid-container {
+            flex: 1;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
             padding: 20px;
-            height: 100vh;
+            overflow: auto;
         }
 
         .grid-item {
@@ -53,8 +70,27 @@
             color: #666;
         }
 
-        .controls {
+        .controls-container {
             margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .controls-container h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 100px;
+            align-items: center;
+        }
+
+        .control-item {
+            flex: 1;
         }
 
         .controls label {
@@ -63,7 +99,7 @@
         }
 
         .controls input {
-            width: 100%;
+            width: 90%;
             padding: 8px;
             border-radius: 4px;
             border: 1px solid #ddd;
@@ -104,10 +140,13 @@
     </style>
 </head>
 <body>
+    <div class="navbar">
+        <h1>Early Warning System Dashboard</h1>
+    </div>
     <div class="grid-container">
         <div class="grid-item">
             <div class="patient-biodata">
-                <img src="http://127.0.0.1:5001/files/patient.png" alt="Patient Picture">
+                <img src="{{ patient.picture }}" alt="Patient Picture">
                 <div class="patient-info">
                     <h2>{{ patient.name }}</h2>
                     <p>Age: {{ patient.age }}</p>
@@ -115,16 +154,25 @@
                 </div>
             </div>
 
-            <div class="controls">
-                <label for="model-weight">Model Weight</label>
-                <input type="range" id="model-weight" min="0" max="1" step="0.1" value="0.5">
-                <label for="capture-duration">Capture Duration (seconds)</label>
-                <input type="number" id="capture-duration" value="5">
+            <div class="controls-container">
+                <h3>Monitoring Controls</h3>
+                <hr>
+                <div class="controls">
+                    <div class="control-item">
+                        <label for="model-weight">Model Weight</label>
+                        <input type="range" id="model-weight" min="0" max="1" step="0.1" value="0.5">
+                    </div>
+                    <div class="control-item">
+                        <label for="capture-duration">Capture Duration (seconds)</label>
+                        <input type="number" id="capture-duration" value="5">
+                    </div>
+                </div>
             </div>
 
             <table>
                 <thead>
                     <tr>
+                        <th>Timestamp</th>
                         <th>Snapshot</th>
                         <th>Audio</th>
                         <th>Emotion Prediction</th>
@@ -133,6 +181,7 @@
                 <tbody>
                     {% for row in data %}
                     <tr>
+                        <td>{{ row.timestamp }}</td>
                         <td><img src="http://127.0.0.1:5001{{ row.image_url }}" alt="Patient Image"></td>
                         <td><audio controls src="http://127.0.0.1:5001{{ row.audio_url }}"></audio></td>
                         <td>{{ row.prediction }}</td>

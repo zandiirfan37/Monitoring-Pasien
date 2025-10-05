@@ -2,14 +2,14 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import json
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='assets')
 
 # Dummy patient data
 patient_data = {
     "name": "John Doe",
     "age": 65,
     "room": 302,
-    "picture": "https://via.placeholder.com/100"
+    "picture": "/assets/patient.png"
 }
 
 @app.route('/')
