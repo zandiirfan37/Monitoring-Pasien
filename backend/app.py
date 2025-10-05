@@ -10,9 +10,10 @@ DB_FILE = os.path.join(os.path.dirname(__file__), 'database.db')
 STATIC_FOLDER = os.path.join(os.path.dirname(__file__), '..')
 
 def init_db():
-    if not os.path.exists(DB_FILE):
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='patient_data'")
+    if c.fetchone() is None:
         c.execute("""
             CREATE TABLE patient_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,8 +23,10 @@ def init_db():
                 prediction TEXT
             )
         """)
-        conn.commit()
-        conn.close()
+    conn.commit()
+    conn.close()
+
+init_db()
 
 @app.route('/data', methods=['POST'])
 def receive_data():
@@ -99,5 +102,4 @@ def delete_data(id):
     return jsonify({'message': 'Data deleted successfully'}), 200
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True, port=5001)

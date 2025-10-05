@@ -6,95 +6,72 @@
     <title>Patient Monitoring Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
         }
 
-        .header {
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: 100vh;
+        }
+
+        .grid-item {
             background-color: #fff;
             padding: 20px;
-            border-bottom: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
         }
 
-        .header h1 {
+        .patient-biodata {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .patient-biodata img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+
+        .patient-info h2 {
             margin: 0;
             font-size: 24px;
         }
 
-        .chart-container {
-            width: 80%;
-            margin: 20px auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .patient-info p {
+            margin: 5px 0;
+            color: #666;
         }
 
-        .model-weights {
-            width: 80%;
-            margin: 20px auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .controls {
+            margin-bottom: 20px;
         }
 
-        .model-weights h2 {
-            margin-top: 0;
-        }
-
-        .slider-container {
-            margin-bottom: 10px;
-        }
-
-        .slider-container label {
+        .controls label {
             display: block;
             margin-bottom: 5px;
         }
 
-        .slider {
+        .controls input {
             width: 100%;
-        }
-
-        .red-alert {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: red;
-            opacity: 0;
-            z-index: 9999;
-            pointer-events: none;
-            transition: opacity 0.5s;
-        }
-
-        .red-alert.active {
-            opacity: 0.5;
-        }
-
-        .red-alert.blink {
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0% { opacity: 0.5; }
-            50% { opacity: 0; }
-            100% { opacity: 0.5; }
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
         }
 
         table {
-            width: 80%;
-            margin: 20px auto;
+            width: 100%;
             border-collapse: collapse;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         th, td {
@@ -113,148 +90,163 @@
             border-radius: 4px;
         }
 
-        .delete-btn {
-            background-color: #ff4d4f;
-            color: #fff;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
+        .chart-filters {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
         }
 
-        .delete-btn:hover {
-            background-color: #d9363e;
+        .chart-filters input {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
 <body>
-    <div id="red-alert" class="red-alert"></div>
-    <audio id="siren" src="https://www.soundjay.com/buttons/sounds/button-7.mp3" preload="auto" loop></audio>
+    <div class="grid-container">
+        <div class="grid-item">
+            <div class="patient-biodata">
+                <img src="http://127.0.0.1:5001/files/patient.png" alt="Patient Picture">
+                <div class="patient-info">
+                    <h2>{{ patient.name }}</h2>
+                    <p>Age: {{ patient.age }}</p>
+                    <p>Room: {{ patient.room }}</p>
+                </div>
+            </div>
 
-    <div class="header">
-        <h1>Patient Monitoring Dashboard</h1>
-    </div>
+            <div class="controls">
+                <label for="model-weight">Model Weight</label>
+                <input type="range" id="model-weight" min="0" max="1" step="0.1" value="0.5">
+                <label for="capture-duration">Capture Duration (seconds)</label>
+                <input type="number" id="capture-duration" value="5">
+            </div>
 
-    <div class="chart-container">
-        <canvas id="patientChart"></canvas>
-    </div>
-
-    <div class="model-weights">
-        <h2>Model Weights</h2>
-        <div class="slider-container">
-            <label for="image-weight">Image Model Weight</label>
-            <input type="range" id="image-weight" class="slider" min="0" max="1" step="0.1" value="0.5">
-            <span id="image-weight-value">0.5</span>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Snapshot</th>
+                        <th>Audio</th>
+                        <th>Emotion Prediction</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        <td><img src="http://127.0.0.1:5001{{ row.image_url }}" alt="Patient Image"></td>
+                        <td><audio controls src="http://127.0.0.1:5001{{ row.audio_url }}"></audio></td>
+                        <td>{{ row.prediction }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="slider-container">
-            <label for="audio-weight">Audio Model Weight</label>
-            <input type="range" id="audio-weight" class="slider" min="0" max="1" step="0.1" value="0.5">
-            <span id="audio-weight-value">0.5</span>
+        <div class="grid-item">
+            <div class="chart-filters">
+                <input type="date" id="filter-date">
+                <input type="time" id="filter-start-hour">
+                <input type="time" id="filter-finish-hour">
+            </div>
+            <canvas id="emotionChart"></canvas>
         </div>
     </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Timestamp</th>
-                <th>Image</th>
-                <th>Audio</th>
-                <th>Prediction</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in data %}
-            <tr>
-                <td>{{ row.timestamp }}</td>
-                <td><img src="http://127.0.0.1:5001{{ row.image_url }}" alt="Patient Image"></td>
-                <td><audio controls src="http://127.0.0.1:5001{{ row.audio_url }}"></audio></td>
-                <td>{{ row.prediction }}</td>
-                <td><button class="delete-btn" onclick="deleteData({{ row.id }})">Delete</button></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
 
     <script>
-        function deleteData(id) {
-            if (confirm('Are you sure you want to delete this data?')) {
-                fetch(`http://127.0.0.1:5001/data/${id}`, {
-                    method: 'DELETE',
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data.message);
-                    location.reload();
-                })
-                .catch((error) => {
-                    console.error('Error:', error);
-                });
-            }
-        }
+        let emotionChart;
+        let allData = [];
+        const emotionColors = {
+            'angry': 'rgba(255, 99, 132, 0.2)',
+            'disgust': 'rgba(75, 192, 192, 0.2)',
+            'fear': 'rgba(0, 0, 0, 0.2)',
+            'happy': 'rgba(255, 206, 86, 0.2)',
+            'sad': 'rgba(54, 162, 235, 0.2)',
+            'surprize': 'rgba(153, 102, 255, 0.2)',
+            'neutral': 'rgba(201, 203, 207, 0.2)'
+        };
+        const emotionBorderColors = {
+            'angry': 'rgba(255, 99, 132, 1)',
+            'disgust': 'rgba(75, 192, 192, 1)',
+            'fear': 'rgba(0, 0, 0, 1)',
+            'happy': 'rgba(255, 206, 86, 1)',
+            'sad': 'rgba(54, 162, 235, 1)',
+            'surprize': 'rgba(153, 102, 255, 1)',
+            'neutral': 'rgba(201, 203, 207, 1)'
+        };
 
-        // Chart.js
-        const ctx = document.getElementById('patientChart').getContext('2d');
-        const patientChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['-90s', '-80s', '-70s', '-60s', '-50s', '-40s', '-30s', '-20s', '-10s', 'Now'],
-                datasets: [{
-                    label: 'Patient Emotion Level',
-                    data: [1, 2, 2, 3, 4, 5, 5, 6, 7, 8].map(() => Math.floor(Math.random() * 10)),
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 10
-                    }
-                }
-            }
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchDataAndRenderChart();
+
+            document.getElementById('filter-date').addEventListener('change', filterData);
+            document.getElementById('filter-start-hour').addEventListener('change', filterData);
+            document.getElementById('filter-finish-hour').addEventListener('change', filterData);
         });
 
-        // Model weight sliders
-        const imageWeightSlider = document.getElementById('image-weight');
-        const imageWeightValue = document.getElementById('image-weight-value');
-        imageWeightSlider.oninput = function() {
-            imageWeightValue.innerHTML = this.value;
+        function fetchDataAndRenderChart() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    allData = data;
+                    renderChart(data);
+                });
         }
 
-        const audioWeightSlider = document.getElementById('audio-weight');
-        const audioWeightValue = document.getElementById('audio-weight-value');
-        audioWeightSlider.oninput = function() {
-            audioWeightValue.innerHTML = this.value;
+        function filterData() {
+            const date = document.getElementById('filter-date').value;
+            const startTime = document.getElementById('filter-start-hour').value;
+            const finishTime = document.getElementById('filter-finish-hour').value;
+
+            let filteredData = allData;
+
+            if (date) {
+                filteredData = filteredData.filter(row => row.timestamp.startsWith(date));
+            }
+
+            if (startTime) {
+                filteredData = filteredData.filter(row => new Date(row.timestamp).toTimeString().slice(0, 5) >= startTime);
+            }
+
+            if (finishTime) {
+                filteredData = filteredData.filter(row => new Date(row.timestamp).toTimeString().slice(0, 5) <= finishTime);
+            }
+
+            renderChart(filteredData);
         }
 
-        // Red alert and siren
-        let imageUpdateCount = parseInt(localStorage.getItem('imageUpdateCount')) || 0;
-        imageUpdateCount++;
-        localStorage.setItem('imageUpdateCount', imageUpdateCount);
+        function renderChart(data) {
+            const emotionCounts = data.reduce((acc, row) => {
+                acc[row.prediction] = (acc[row.prediction] || 0) + 1;
+                return acc;
+            }, {});
 
-        if (imageUpdateCount % 3 === 0) {
-            const redAlert = document.getElementById('red-alert');
-            const siren = document.getElementById('siren');
-            redAlert.classList.add('active');
-            redAlert.classList.add('blink');
-            siren.play();
+            const emotionLabels = Object.keys(emotionCounts);
+            const emotionFrequencies = Object.values(emotionCounts);
 
-            setTimeout(() => {
-                siren.pause();
-                siren.currentTime = 0;
-                redAlert.classList.remove('active');
-                redAlert.classList.remove('blink');
-            }, 5000); // Let it run for 5 seconds
+            if (emotionChart) {
+                emotionChart.destroy();
+            }
+
+            const ctx = document.getElementById('emotionChart').getContext('2d');
+            emotionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: emotionLabels,
+                    datasets: [{
+                        label: 'Emotion Frequency',
+                        data: emotionFrequencies,
+                        backgroundColor: emotionLabels.map(label => emotionColors[label] || 'rgba(201, 203, 207, 0.2)'),
+                        borderColor: emotionLabels.map(label => emotionBorderColors[label] || 'rgba(201, 203, 207, 1)'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
         }
-
-
-        setTimeout(() => {
-            location.reload();
-        }, 20000);
     </script>
 </body>
 </html>

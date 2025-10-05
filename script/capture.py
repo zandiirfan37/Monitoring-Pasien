@@ -16,17 +16,55 @@ AUDIO_DIR = "audios"
 SPECTROGRAM_DIR = "spectrograms"
 
 # --- Model Loading ---
-# Load your pre-trained YOLO model
-model_path = os.path.join(os.path.dirname(__file__), '..', 'model', 'best (3).pt')
-if not os.path.exists(model_path):
-    print(f"Model not found at {model_path}")
+# 1. Load kedua model
+face_model_path = os.path.join(os.path.dirname(__file__), '..', 'model', 'best (3).pt')
+if not os.path.exists(face_model_path):
+    print(f"Model not found at {face_model_path}")
     exit()
+face_model = YOLO(face_model_path)
 
-# Load the model
-model = YOLO(model_path)
+# PLEASE REPLACE WITH THE ACTUAL PATH TO YOUR AUDIO MODEL
+audio_model_path = os.path.join(os.path.dirname(__file__), '..', 'model', 'best (3).pt')
+if not os.path.exists(audio_model_path):
+    print(f"Audio model not found at {audio_model_path}")
+    print("Please replace 'path/to/your/audio/model.pt' with the actual path to your audio model.")
+    # exit() # You might want to exit if the model is not found
+    audio_model = face_model # Using face model as a placeholder
+else:
+    audio_model = YOLO(audio_model_path)
+
+
+# 3. Unified classes & mapping
+unified_classes = ['angry','disgust','fear','happy','neutral','sad','surprize']
+
+face_to_unified = {
+    'Angry':    'angry',
+    'Disgust':  'disgust',
+    'Fear':     'fear',
+    'Happy':    'happy',
+    'Neutral':  'neutral',
+    'Sad':      'sad',
+    'Surprize': 'surprize',
+}
+
+audio_to_unified = {
+    'Angry':        'angry',
+    'Disgust':      'disgust',
+    'Fear':      'fear',
+    'Happy':        'happy',
+    'Neutral': 'neutral',
+    'Sad':          'sad',
+    'Surprize':     'surprize',
+}
+
+# 4. Fungsi inferensi → np.ndarray probabilitas
+def infer_probs(model, img_path, img_size=224):
+    res     = model.predict(source=img_path, imgsz=img_size, conf=0.0, verbose=False)[0]
+    raw     = res.cpu().probs.data
+    return raw.cpu().numpy()
 
 # --- Main Capture Loop ---
-def capture_and_analyze():
+def capture_and_analyze(alpha=0.6, img_size=224):
     # Create directories if they don't exist
     os.makedirs(IMAGE_DIR, exist_ok=True)
     os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -75,17 +113,22 @@ def capture_and_analyze():
             print(f"Spectrogram saved: {spectrogram_path}")
 
 
-            # --- Analyze with Model ---
-            results_image = model.predict(image_path)
-            results_audio = model.predict(spectrogram_path)
+            # --- Analyze with Fusion Model ---
+            pf = infer_probs(face_model,  image_path, img_size)
+            pa = infer_probs(audio_model, spectrogram_path, img_size)
 
-            # Get the class with the highest probability for the image
-            probs_image = results_image[0].probs
-            image_prediction = results_image[0].names[probs_image.top1]
+            # akumulasi probabilitas ke unified index
+            vf = np.zeros(len(unified_classes))
+            va = np.zeros(len(unified_classes))
+            for idx,p in enumerate(pf):
+                uni_i = unified_classes.index(face_to_unified[face_model.names[idx]])
+                vf[uni_i] += p
+            for idx,p in enumerate(pa):
+                uni_i = unified_classes.index(audio_to_unified[audio_model.names[idx]])
+                va[uni_i] += p
 
-            # Get the class with the highest probability for the audio
-            probs_audio = results_audio[0].probs
-            audio_prediction = results_audio[0].names[probs_audio.top1]
+            vfus = alpha * vf + (1 - alpha) * va
+            prediction = unified_classes[int(np.argmax(vfus))]
 
 
             # --- Send to Backend ---
@@ -93,7 +136,7 @@ def capture_and_analyze():
                 response = requests.post("http://127.0.0.1:5001/data", json={
                     'image_path': image_path,
                     'audio_path': audio_path,
-                    'prediction': f'Image: {image_prediction}, Audio: {audio_prediction}'
+                    'prediction': prediction
                 })
                 if response.status_code == 201:
                     print("Data sent to backend successfully")
