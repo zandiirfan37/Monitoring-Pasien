@@ -124,6 +124,7 @@
             width: 100px;
             height: auto;
             border-radius: 4px;
+            cursor: pointer;
         }
 
         .chart-filters {
@@ -132,10 +133,59 @@
             margin-bottom: 20px;
         }
 
+        .chart-filters div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-filters label {
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+
         .chart-filters input {
             padding: 8px;
             border-radius: 4px;
             border: 1px solid #ddd;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.9);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 700px;
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #bbb;
+            text-decoration: none;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -182,7 +232,7 @@
                     {% for row in data %}
                     <tr>
                         <td>{{ row.timestamp }}</td>
-                        <td><img src="http://127.0.0.1:5001{{ row.image_url }}" alt="Patient Image"></td>
+                        <td><img class="snapshot" src="http://127.0.0.1:5001{{ row.image_url }}" alt="Patient Image"></td>
                         <td><audio controls src="http://127.0.0.1:5001{{ row.audio_url }}"></audio></td>
                         <td>{{ row.prediction }}</td>
                     </tr>
@@ -192,12 +242,26 @@
         </div>
         <div class="grid-item">
             <div class="chart-filters">
-                <input type="date" id="filter-date">
-                <input type="time" id="filter-start-hour">
-                <input type="time" id="filter-finish-hour">
+                <div>
+                    <label for="filter-date">Date</label>
+                    <input type="date" id="filter-date">
+                </div>
+                <div>
+                    <label for="filter-start-hour">Start Hour</label>
+                    <input type="time" id="filter-start-hour">
+                </div>
+                <div>
+                    <label for="filter-finish-hour">Finish Hour</label>
+                    <input type="time" id="filter-finish-hour">
+                </div>
             </div>
             <canvas id="emotionChart"></canvas>
         </div>
+    </div>
+
+    <div id="myModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="img01">
     </div>
 
     <script>
@@ -228,6 +292,18 @@
             document.getElementById('filter-date').addEventListener('change', filterData);
             document.getElementById('filter-start-hour').addEventListener('change', filterData);
             document.getElementById('filter-finish-hour').addEventListener('change', filterData);
+
+            var modal = document.getElementById("myModal");
+            modal.addEventListener('click', function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            });
+
+            var span = document.getElementsByClassName("close")[0];
+            span.onclick = function() { 
+                modal.style.display = "none";
+            }
         });
 
         function fetchDataAndRenderChart() {
@@ -236,6 +312,16 @@
                 .then(data => {
                     allData = data;
                     renderChart(data);
+                    // Re-initialize image click events after data is fetched
+                    var modal = document.getElementById("myModal");
+                    var modalImg = document.getElementById("img01");
+                    var images = document.getElementsByClassName("snapshot");
+                    for (let i = 0; i < images.length; i++) {
+                        images[i].onclick = function(){
+                            modal.style.display = "block";
+                            modalImg.src = this.src;
+                        }
+                    }
                 });
         }
 
