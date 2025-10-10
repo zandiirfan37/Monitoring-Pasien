@@ -9,7 +9,8 @@ patient_data = {
     "name": "John Doe",
     "age": 65,
     "room": 302,
-    "picture": "/assets/patient.png"
+    "picture": "/assets/patient.png",
+    "siren": "/assets/siren.mp3"
 }
 
 @app.route('/')

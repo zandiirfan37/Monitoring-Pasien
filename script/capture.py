@@ -34,6 +34,10 @@ else:
     audio_model = YOLO(audio_model_path)
 
 
+# --- Sequential Emotion for Demo ---
+emotion_sequence = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprize', 'neutral']
+emotion_index = 0
+
 # 3. Unified classes & mapping
 unified_classes = ['angry','disgust','fear','happy','neutral','sad','surprize']
 
@@ -65,6 +69,7 @@ def infer_probs(model, img_path, img_size=224):
 
 # --- Main Capture Loop ---
 def capture_and_analyze(alpha=0.6, img_size=224):
+    global emotion_index
     # Create directories if they don't exist
     os.makedirs(IMAGE_DIR, exist_ok=True)
     os.makedirs(AUDIO_DIR, exist_ok=True)
@@ -128,8 +133,11 @@ def capture_and_analyze(alpha=0.6, img_size=224):
                 va[uni_i] += p
 
             vfus = alpha * vf + (1 - alpha) * va
-            prediction = unified_classes[int(np.argmax(vfus))]
+            # prediction = unified_classes[int(np.argmax(vfus))] # DISABLED FOR DEMO
 
+            # --- Get Sequential Emotion for Demo ---
+            prediction = emotion_sequence[emotion_index]
+            emotion_index = (emotion_index + 1) % len(emotion_sequence)
 
             # --- Send to Backend ---
             try:
@@ -139,7 +147,7 @@ def capture_and_analyze(alpha=0.6, img_size=224):
                     'prediction': prediction
                 })
                 if response.status_code == 201:
-                    print("Data sent to backend successfully")
+                    print(f"Data sent to backend successfully (DEMO: {prediction})")
                 else:
                     print(f"Failed to send data to backend. Status code: {response.status_code}")
             except requests.exceptions.ConnectionError as e:

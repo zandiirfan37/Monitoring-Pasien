@@ -71,7 +71,7 @@ def serve_file(filename):
     # Determine the subdirectory (images or audios) based on the file extension
     if filename.endswith('.jpg'):
         directory = os.path.join(STATIC_FOLDER, 'images')
-    elif filename.endswith('.wav'):
+    elif filename.endswith('.wav') or filename.endswith('.mp3'):
         directory = os.path.join(STATIC_FOLDER, 'audios')
     else:
         return "File not found", 404

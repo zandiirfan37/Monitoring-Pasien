@@ -187,9 +187,22 @@
             text-decoration: none;
             cursor: pointer;
         }
+
+        @keyframes flashing-red {
+            0% { background-color: #fff; }
+            50% { background-color: #ff0000; }
+            100% { background-color: #fff; }
+        }
+
+        .flashing-alert {
+            animation: flashing-red 1s infinite;
+        }
     </style>
 </head>
 <body>
+    <audio id="siren">
+        <source src="assets/siren.mp3" >
+    </audio>
     <div class="navbar">
         <h1>Early Warning System Dashboard</h1>
     </div>
@@ -267,6 +280,8 @@
     <script>
         let emotionChart;
         let allData = [];
+        let angryTimer;
+        let isAlerting = false;
         const emotionColors = {
             'angry': 'rgba(255, 99, 132, 0.2)',
             'disgust': 'rgba(75, 192, 192, 0.2)',
@@ -287,7 +302,10 @@
         };
 
         document.addEventListener('DOMContentLoaded', function() {
+            // const siren = document.getElementById('siren');
+            // siren.play();
             fetchDataAndRenderChart();
+            setInterval(fetchDataAndRenderChart, 5000); // Refresh data every 5 seconds
 
             document.getElementById('filter-date').addEventListener('change', filterData);
             document.getElementById('filter-start-hour').addEventListener('change', filterData);
@@ -311,7 +329,9 @@
                 .then(response => response.json())
                 .then(data => {
                     allData = data;
+                    updateTable(data);
                     renderChart(data);
+                    checkEmotion(data);
                     // Re-initialize image click events after data is fetched
                     var modal = document.getElementById("myModal");
                     var modalImg = document.getElementById("img01");
@@ -323,6 +343,77 @@
                         }
                     }
                 });
+        }
+
+        function updateTable(data) {
+            const tbody = document.querySelector('table tbody');
+            tbody.innerHTML = '';
+            for (const row of data) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.timestamp}</td>
+                    <td><img class="snapshot" src="http://127.0.0.1:5001${row.image_url}" alt="Patient Image"></td>
+                    <td><audio controls src="http://127.0.0.1:5001${row.audio_url}"></audio></td>
+                    <td>${row.prediction}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        function checkEmotion(data) {
+            if (data.length > 0) {
+                const latestPrediction = data[0].prediction;
+                if (latestPrediction === 'angry') {
+                    if (!angryTimer) {
+                        angryTimer = setTimeout(() => {
+                            triggerAlert(true);
+                        }, 3000); // 3 seconds delay
+                    }
+                } else {
+                    clearTimeout(angryTimer);
+                    angryTimer = null;
+                    triggerAlert(false);
+                }
+            }
+        }
+
+        function triggerAlert(start) {
+            const navbar = document.querySelector('.navbar');
+            const siren = document.getElementById('siren');
+            if (start && !isAlerting) {
+                navbar.classList.add('flashing-alert');
+                const playPromise = siren.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        if (error.name === 'NotAllowedError') {
+                            const soundMessage = document.createElement('div');
+                            soundMessage.id = 'sound-message';
+                            soundMessage.textContent = 'Click anywhere to enable sound';
+                            soundMessage.style.position = 'fixed';
+                            soundMessage.style.top = '10px';
+                            soundMessage.style.left = '50%';
+                            soundMessage.style.transform = 'translateX(-50%)';
+                            soundMessage.style.padding = '10px';
+                            soundMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                            soundMessage.style.color = 'white';
+                            soundMessage.style.borderRadius = '5px';
+                            soundMessage.style.zIndex = '1000';
+                            document.body.appendChild(soundMessage);
+
+                            document.addEventListener('click', () => {
+                                siren.play();
+                                soundMessage.remove();
+                            }, { once: true });
+                        }
+                    });
+                }
+                isAlerting = true;
+            } else if (!start && isAlerting) {
+                navbar.classList.remove('flashing-alert');
+                siren.pause();
+                siren.currentTime = 0;
+                isAlerting = false;
+            }
         }
 
         function filterData() {
